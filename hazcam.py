@@ -16,8 +16,6 @@ from __future__ import print_function
 import cv2
 import numpy as np
 
-# relative module
-import video
 
 # built-in module
 import sys
@@ -39,12 +37,9 @@ def filter_lines(lines):
 def find_lane_markers(image):
     levels = 10
     image = image.copy()
-    image = cv2.dilate(image, None)
-    image = cv2.dilate(image, None)
-    image = cv2.dilate(image, None)
-    image = cv2.dilate(image, None)
-    image = cv2.dilate(image, None)
-    image = cv2.dilate(image, None)
+    for _ in range(6):
+        image = cv2.dilate(image, None)
+    
     image /= 10
     _, contours0, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     #contours = [cv2.approxPolyDP(cnt, 8, True) for cnt in contours0]
@@ -73,7 +68,7 @@ if __name__ == '__main__':
     cv2.createTrackbar('angle res', 'edge', 180, 360, nothing)
     cv2.createTrackbar('thrs4', 'edge', 20, 50, nothing)
 
-    cap = video.create_capture(fn)
+    cap = cv2.VideoCapture(fn)
     paused = False
     segment_history = []
     previous_mask = None
