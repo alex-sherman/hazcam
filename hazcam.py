@@ -21,6 +21,10 @@ import numpy as np
 import sys
 import math
 
+DILATE_COUNT = 3
+HEIGHT_TARGET = 15 + DILATE_COUNT * 2
+HEIGHT_THRESH = 5
+
 def filter_lines(lines):
     """ Takes an array of hough lines and separates them by +/- slope.
         The y-axis is inverted in matplotlib, so the calculated positive slopes will be right
@@ -37,7 +41,7 @@ def filter_lines(lines):
 def find_lane_markers(image):
     levels = 10
     image = image.copy()
-    for _ in range(6):
+    for _ in range(DILATE_COUNT):
         image = cv2.dilate(image, None)
     
     image /= 10
@@ -45,12 +49,13 @@ def find_lane_markers(image):
     #contours = [cv2.approxPolyDP(cnt, 8, True) for cnt in contours0]
     contours = [cv2.convexHull(cnt, 30, True) for cnt in contours0]
     boxes = [cv2.minAreaRect(cnt) for cnt in contours0]
-    boxes = [box for box in boxes if box[-1] not in [0, -90, 90]]
-    draw_boxes = [np.int0(cv2.boxPoints(cv2.minAreaRect(cnt))) for cnt in contours0]
-    cv2.drawContours( image, draw_boxes, (-1, 2)[levels <= 0], 255,
-            1, cv2.LINE_AA, hierarchy, abs(levels) )
-    return image, boxes
-MASK_WEIGHT = 0.03
+    boxes = [box for box in boxes if abs(box[1][1] - HEIGHT_TARGET) < HEIGHT_THRESH]
+    return boxes
+
+def draw_lane_markers(boxes, vis):
+    draw_boxes = [np.int0(cv2.boxPoints(box)) for box in boxes]
+    cv2.drawContours(vis, draw_boxes, -1, 255,2)
+MASK_WEIGHT = 0.1
 if __name__ == '__main__':
     print(__doc__)
 
@@ -75,7 +80,7 @@ if __name__ == '__main__':
     while True:
         if not paused:
             flag, img = cap.read()
-            img = img[300:, :]
+            img = img[270:500, :]
             height, width, c = img.shape
             if(previous_mask == None):
                 previous_mask = np.zeros((height, width, 1), np.uint8)
@@ -87,7 +92,7 @@ if __name__ == '__main__':
         angle_res = cv2.getTrackbarPos('angle res', 'edge')
         edge = cv2.Canny(gray, thrs1, thrs2, apertureSize=5)
         vis = img.copy()
-        lines = cv2.HoughLinesP(edge, 1, np.pi / angle_res, thrs4, minLineLength = 10,maxLineGap = 50)
+        lines = cv2.HoughLinesP(edge, 1, np.pi / angle_res, thrs4, minLineLength = 10, maxLineGap = 100)
         if lines == None: continue
         lines = filter_lines(lines)
         if not paused:
@@ -100,11 +105,15 @@ if __name__ == '__main__':
             _, current_mask = cv2.threshold(current_mask, 40, 255,cv2.THRESH_BINARY)
             segment_history.append(lines)
         masked_edges = cv2.bitwise_and(edge, edge,mask = current_mask)
-        im_with_keypoints, boxes = find_lane_markers(masked_edges)
-        vis = np.uint8(vis)
-        vis[current_mask != 0] = (0, 255, 0)
-        vis[edge != 0] = (255, 0, 0)
-        cv2.imshow('edge', im_with_keypoints)
+        boxes = find_lane_markers(masked_edges)
+        draw_lane_markers(boxes, vis)
+        #vis = np.uint8(vis)
+        #vis[current_mask != 0] = (0, 255, 0)
+        for line in lines:
+            x1,y1,x2,y2,m = line
+            #cv2.line(vis, (x1,y1),(x2,y2), (0, 0, 255), 3)
+        #vis[edge != 0] = (255, 0, 0)
+        cv2.imshow('edge', vis)
         ch = cv2.waitKey(5)
         if ch == 32:
             paused = not paused
