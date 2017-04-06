@@ -21,30 +21,41 @@ import numpy as np
 import sys
 import math
 
-DILATE_COUNT = 3
-HEIGHT_TARGET = 12 + DILATE_COUNT * 2
-HEIGHT_THRESH = 10
+EDGE_DILATION = 3
+HEIGHT_TARGET = 8
+HEIGHT_THRESH = 5
 MIN_LINE_SLOPE = 0.5
 MAX_LINE_SLOPE = 5
+VANISHING_HEIGHT = 60
+IMAGE_HEIGHT = 300
 
 def filter_lines(lines):
     """ Takes an array of hough lines and separates them by +/- slope.
         The y-axis is inverted in matplotlib, so the calculated positive slopes will be right
         lane lines and negative slopes will be left lanes. """
     output = []
-    for x1,y1,x2,y2 in lines[:, 0]:
-        if x1 == x2: continue
-        m = (float(y2) - y1) / (x2 - x1)
-        if abs(m) < MIN_LINE_SLOPE or abs(m) > MAX_LINE_SLOPE: continue
-        output.append([x1, y1, x2, y2, m])
+    if lines != None:
+        for x1,y1,x2,y2 in lines[:, 0]:
+            if x1 == x2: continue
+            m = (float(y2) - y1) / (x2 - x1)
+            if abs(m) < MIN_LINE_SLOPE or abs(m) > MAX_LINE_SLOPE: continue
+            b = y1 - m * x1
+            y1 = VANISHING_HEIGHT
+            x1 = int((y1 - b) / m)
+            y2 = IMAGE_HEIGHT
+            x2 = int((y2 - b) / m)
+            output.append([x1, y1, x2, y2])
     
     return output
+
+def extend_and_clip(lines, max_height):
+    for i, (x1,y1,x2,y2) in enumerate(lines):
+        m = (float(y2) - y1) / (x2 - x1)
+
 
 def find_lane_markers(image):
     levels = 10
     image = image.copy()
-    for _ in range(DILATE_COUNT):
-        image = cv2.dilate(image, None)
     
     image /= 10
     _, contours0, hierarchy = cv2.findContours(image, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -57,7 +68,7 @@ def find_lane_markers(image):
 def draw_lane_markers(boxes, vis):
     draw_boxes = [np.int0(cv2.boxPoints(box)) for box in boxes]
     cv2.drawContours(vis, draw_boxes, -1, (255, 255, 0), 2)
-MASK_WEIGHT = 0.05
+MASK_WEIGHT = 0.1
 MASK_THRESH = 40
 MASK_WIDTH = 10
 if __name__ == '__main__':
@@ -75,7 +86,8 @@ if __name__ == '__main__':
     cv2.createTrackbar('thrs1', 'edge', 2500, 5000, nothing)
     cv2.createTrackbar('thrs2', 'edge', 2500, 5000, nothing)
     cv2.createTrackbar('angle res', 'edge', 180, 360, nothing)
-    cv2.createTrackbar('thrs4', 'edge', 20, 50, nothing)
+    cv2.createTrackbar('thrs4', 'edge', 25, 50, nothing)
+    cv2.createTrackbar('thrs5', 'edge', 30, 100, nothing)
 
     cap = cv2.VideoCapture(fn)
     paused = True
@@ -85,7 +97,7 @@ if __name__ == '__main__':
     while True:
         if not paused or step:
             flag, img = cap.read()
-            img = img[270:500, :]
+            img = img[270:270 + IMAGE_HEIGHT, :]
             height, width, c = img.shape
             if(previous_mask == None):
                 previous_mask = np.zeros((height, width, 1), np.uint8)
@@ -94,32 +106,41 @@ if __name__ == '__main__':
         thrs1 = cv2.getTrackbarPos('thrs1', 'edge') * 2
         thrs2 = cv2.getTrackbarPos('thrs2', 'edge') * 2
         thrs4 = cv2.getTrackbarPos('thrs4', 'edge') * 2
+        thrs5 = cv2.getTrackbarPos('thrs5', 'edge') * 2
         angle_res = cv2.getTrackbarPos('angle res', 'edge')
         edge = cv2.Canny(gray, thrs1, thrs2, apertureSize=5)
         vis = img.copy()
         lines = cv2.HoughLinesP(edge, 1, np.pi / angle_res, thrs4, minLineLength = 10, maxLineGap = 200)
-        if lines == None: continue
         lines = filter_lines(lines)
         if not paused or step:
             for line in lines:
-                x1,y1,x2,y2,m = line
+                x1,y1,x2,y2 = line
                 cv2.line(current_mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
             current_mask = cv2.addWeighted(current_mask, MASK_WEIGHT, previous_mask, 1 - MASK_WEIGHT, 0)
             #current_mask *= int(255.0 / current_mask.max())
             previous_mask = current_mask
             _, current_mask = cv2.threshold(current_mask, 40, 255,cv2.THRESH_BINARY)
             segment_history.append(lines)
-        masked_edges = cv2.dilate(cv2.bitwise_and(edge, edge, mask = current_mask), None)
+            masked_edges = cv2.dilate(cv2.bitwise_and(edge, edge, mask = current_mask), np.array([[1] * 5] *5))
+            lines2 = cv2.HoughLinesP(masked_edges, 1, np.pi / angle_res, thrs5, minLineLength = 10, maxLineGap = 200)
+            lines2 = filter_lines(lines2)
+            for line in lines2:
+                x1,y1,x2,y2 = line
+                cv2.line(current_mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
         boxes = find_lane_markers(masked_edges)
         vis = np.uint8(vis)
-        vis[current_mask != 0] = (0, 255, 0)
-        for line in lines:
-            x1,y1,x2,y2,m = line
-            cv2.line(vis, (x1,y1),(x2,y2), (0, 0, 255), 3)
-        vis[masked_edges != 0] = (255, 0, 0)
-        vis[edge != 0] = (255, 255, 255)
+        #vis[current_mask != 0] = (0, 50, 0)
+        #for line in lines:
+        #    x1,y1,x2,y2 = line
+        #    cv2.line(vis, (x1,y1),(x2,y2), (0, 0, 255), MASK_WIDTH)
+        #for line in lines2:
+        #    x1,y1,x2,y2 = line
+        #    cv2.line(vis, (x1,y1),(x2,y2), (0, 255, 255), 1)
+        #vis[masked_edges != 0] = (255, 0, 0)
+        #vis[edge != 0] = (255, 255, 255)
         draw_lane_markers(boxes, vis)
         step = False
+        cv2.imshow('edge', vis)
         cv2.imshow('edge', vis)
         ch = cv2.waitKey(5)
         if ch == 13:
