@@ -121,6 +121,7 @@ class LaneDetector(object):
             x1,y1,x2,y2 = line
             cv2.line(current_mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
         self.segment_history = self.boxes[1]
+        self.boxes = find_lane_markers(self.masked_edges)
 
     def draw_frame(self, debug, vis):
         self.boxes = find_lane_markers(self.masked_edges)
