@@ -38,22 +38,22 @@ def evaluate(mat):
     c3 = project(r3, mat)
     return norm2(i0, c0) + norm2(i1, c1) + norm2(i2, c2) + norm2(i3, c3)
 
-def perturb(mat, amount):
+epsilon = 0.0001
+def perturb(mat, amount, est):
     from copy import deepcopy
     from random import randrange, choice, uniform
     mat2 = deepcopy(mat)
-    mat2[choice([0, 1, 3])][choice([0, 2, 3])] += uniform(-amount, amount)
-    return mat2
+    i, j = (choice([0, 1, 3]), choice([0, 2, 3]))
+    mat2[i][j] += epsilon
+    est2 = evaluate(mat2)
+    de = (est2 - est) / epsilon
+    mat2[i][j] -= epsilon + amount * de
+    return mat2, est
 
 def approximate(mat, amount, n=400):
     est = evaluate(mat)
-
     for i in xrange(n):
-        mat2 = perturb(mat, amount)
-        est2 = evaluate(mat2)
-        if est2 < est:
-            mat = mat2
-            est = est2
+        mat, est = perturb(mat, amount, est)
 
     return mat, est
 
