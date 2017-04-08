@@ -94,6 +94,7 @@ class LaneDetector(object):
         self.masked_edges = None
         self.previous_mask = None
         self.boxes = ([],[])
+        self.edge = None
 
     def run_step(self, img, thrs1, thrs2, thrs4, thrs5, debug, angle_res):
         height, width, c = img.shape
@@ -101,25 +102,25 @@ class LaneDetector(object):
 
         if(self.previous_mask == None):
             self.previous_mask = np.zeros((height, width, 1), np.uint8)
-        current_mask = np.zeros((height, width, 1), np.uint8)
+        self.current_mask = np.zeros((height, width, 1), np.uint8)
         
-        edge = cv2.Canny(gray, thrs1, thrs2, apertureSize=5)
-        lines = cv2.HoughLinesP(edge, 1, np.pi / angle_res, thrs4, minLineLength = 10, maxLineGap = 200)
-        lines = filter_lines(lines, VANISHING_HEIGHT, height)
+        self.edge = cv2.Canny(gray, thrs1, thrs2, apertureSize=5)
+        self.lines = cv2.HoughLinesP(self.edge, 1, np.pi / angle_res, thrs4, minLineLength = 10, maxLineGap = 200)
+        self.lines = filter_lines(self.lines, VANISHING_HEIGHT, height)
 
-        for line in lines:
+        for line in self.lines:
             x1,y1,x2,y2 = line
-            cv2.line(current_mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
-        current_mask = cv2.addWeighted(current_mask, MASK_WEIGHT, self.previous_mask, 1 - MASK_WEIGHT, 0)
-        #current_mask *= int(255.0 / current_mask.max())
-        self.previous_mask = current_mask
-        _, current_mask = cv2.threshold(current_mask, 40, 255,cv2.THRESH_BINARY)
-        self.masked_edges = cv2.morphologyEx(cv2.bitwise_and(edge, edge, mask = current_mask), cv2.MORPH_CLOSE, np.array([[1] * EDGE_DILATION] *EDGE_DILATION))
-        lines2 = cv2.HoughLinesP(self.masked_edges, 1, np.pi / angle_res, thrs5, minLineLength = 10, maxLineGap = 200)
-        lines2 = filter_lines(lines2, VANISHING_HEIGHT, height)
-        for line in lines2:
+            cv2.line(self.current_mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
+        self.current_mask = cv2.addWeighted(self.current_mask, MASK_WEIGHT, self.previous_mask, 1 - MASK_WEIGHT, 0)
+        #self.current_mask *= int(255.0 / self.current_mask.max())
+        self.previous_mask = self.current_mask
+        _, self.current_mask = cv2.threshold(self.current_mask, 40, 255,cv2.THRESH_BINARY)
+        self.masked_edges = cv2.morphologyEx(cv2.bitwise_and(self.edge, self.edge, mask = self.current_mask), cv2.MORPH_CLOSE, np.array([[1] * EDGE_DILATION] *EDGE_DILATION))
+        self.lines2 = cv2.HoughLinesP(self.masked_edges, 1, np.pi / angle_res, thrs5, minLineLength = 10, maxLineGap = 200)
+        self.lines2 = filter_lines(self.lines2, VANISHING_HEIGHT, height)
+        for line in self.lines2:
             x1,y1,x2,y2 = line
-            cv2.line(current_mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
+            cv2.line(self.current_mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
         self.segment_history = self.boxes[1]
         self.boxes = find_lane_markers(self.masked_edges)
 
@@ -127,18 +128,18 @@ class LaneDetector(object):
         self.boxes = find_lane_markers(self.masked_edges)
         vis = np.uint8(vis)
         if debug & 0x10:
-            vis[current_mask != 0] = (0, 50, 0)
+            vis[self.current_mask != 0] = (0, 50, 0)
         if debug & 0x8:
-            for line in lines:
+            for line in self.lines:
                 x1,y1,x2,y2 = line
                 cv2.line(vis, (x1,y1),(x2,y2), (0, 0, 255), MASK_WIDTH)
         if debug & 0x4:
-            for line in lines2:
+            for line in self.lines2:
                 x1,y1,x2,y2 = line
                 cv2.line(vis, (x1,y1),(x2,y2), (0, 255, 255), 1)
         if debug & 0x2:
             vis[self.masked_edges != 0] = (255, 0, 0)
         if debug & 0x1:
-            vis[edge != 0] = (255, 255, 255)
+            vis[self.edge != 0] = (255, 255, 255)
         draw_lane_markers(self.boxes, self.segment_history, vis)
         return vis

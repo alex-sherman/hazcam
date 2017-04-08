@@ -82,7 +82,7 @@ if __name__ == '__main__':
             cv2.line(vis, tuple(pair[0][1]), tuple(pair[1][1]), (255, 0, 0), 2)
             cv2.circle(vis, tuple(pair[0][0]), 5, (255, 255, 0))
             cv2.circle(vis, tuple(pair[0][1]), 5, (255, 0, 255))
-    zs = [z / 4.0 for z in range(0, 20)]
+    zs = [z for z in range(0, 80)]
     for z1, z2 in zip(zs[:-1], zs[1:]):
         cv2.line(vis, tuple(map(int, project((0,0,z1), mat))), tuple(map(int, project((1,0,z1), mat))), (100, 100, 100), 1)
 
