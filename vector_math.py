@@ -1,15 +1,21 @@
 def add(a, b):
-    return [a[0] + b[0], a[1] + b[1]]
+    return [ta + tb for ta, tb in zip(a, b)]
 
 def diff(a, b):
-    return [a[0] - b[0], a[1] - b[1]]
+    return [ta - tb for ta, tb in zip(a, b)]
 
 def dot(a, b):
-    return a[0] * b[0] + a[1] * b[1]
+    return sum([ta * tb for ta, tb in zip(a, b)])
 
 def length(a):
-    return (a[0] ** 2 + a[1] ** 2) ** 0.5
+    return sum(t ** 2 for t in a) ** 0.5
 
 def norm(a):
     l = length(a)
-    return [a[0] / l, a[1] / l]
+    return [t / l for t in a]
+
+def cross(a, b):
+    c = [a[1]*b[2] - a[2]*b[1],
+         a[2]*b[0] - a[0]*b[2],
+         a[0]*b[1] - a[1]*b[0]]
+    return c
