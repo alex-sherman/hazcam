@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 EDGE_DILATION = 2
-CASCADE_SRC = 'images/cascade_dir/cascade.xml'
+CASCADE_SRC = './cascade.xml'
 
 class VehicleDetector(object):
     def __init__(self):

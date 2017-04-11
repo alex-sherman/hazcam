@@ -37,7 +37,7 @@ if __name__ == '__main__':
     cv2.createTrackbar('thrs4', 'edge', 35, 50, nothing)
     cv2.createTrackbar('thrs5', 'edge', 35, 100, nothing)
     cv2.createTrackbar('debug', 'edge', 0, 31, nothing)
-    cv2.createTrackbar('vd1', 'edge', 4, 10, nothing)
+    cv2.createTrackbar('vd1', 'edge', 5, 10, nothing)
     cv2.createTrackbar('vd2', 'edge', 4525, 10000, nothing)
 
     cap = cv2.VideoCapture(fn)
