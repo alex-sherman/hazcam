@@ -37,9 +37,8 @@ if __name__ == '__main__':
     cv2.createTrackbar('thrs4', 'edge', 35, 50, nothing)
     cv2.createTrackbar('thrs5', 'edge', 35, 100, nothing)
     cv2.createTrackbar('debug', 'edge', 0, 31, nothing)
-    cv2.createTrackbar('vd1', 'edge', 2450, 10000, nothing)
+    cv2.createTrackbar('vd1', 'edge', 4, 10, nothing)
     cv2.createTrackbar('vd2', 'edge', 4525, 10000, nothing)
-    cv2.createTrackbar('vdsize', 'edge', 0, 20, nothing)
 
     cap = cv2.VideoCapture(fn)
     ld = LaneDetector()
@@ -62,14 +61,13 @@ if __name__ == '__main__':
 
         vd1 = cv2.getTrackbarPos('vd1', 'edge')
         vd2 = cv2.getTrackbarPos('vd2', 'edge')
-        vdsize = cv2.getTrackbarPos('vdsize', 'edge')
 
         if not paused or step:
             ld.run_step(img, thrs1, thrs2, thrs4, thrs5, debug, angle_res)
             vd.run_step(img)
 
         vis = ld.draw_frame(debug, img.copy())
-        vis = vd.draw_frame(debug, vis, vd1, vd2, vdsize)
+        vis = vd.draw_frame(debug, vis, vd1, vd2)
         step = False
         cv2.imshow('edge', vis)
         ch = cv2.waitKey(5)
