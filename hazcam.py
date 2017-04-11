@@ -13,6 +13,7 @@ import math
 
 from lane_detect import LaneDetector
 from vehicle_detection import VehicleDetector
+from lane_plane import LanePlane
 
 IMAGE_START = 200
 IMAGE_HEIGHT = 370
@@ -43,6 +44,7 @@ if __name__ == '__main__':
     cap = cv2.VideoCapture(fn)
     ld = LaneDetector()
     vd = VehicleDetector()
+    lp = None
 
     paused = True
     step = True
@@ -52,6 +54,8 @@ if __name__ == '__main__':
             flag, img = cap.read()
             if img == None: break
             img = img[IMAGE_START:IMAGE_START + IMAGE_HEIGHT, :]
+            if lp == None:
+                lp = LanePlane(img.shape[0], img.shape[1])
         thrs1 = cv2.getTrackbarPos('thrs1', 'edge')
         thrs2 = cv2.getTrackbarPos('thrs2', 'edge')
         thrs4 = cv2.getTrackbarPos('thrs4', 'edge') * 2
@@ -65,9 +69,14 @@ if __name__ == '__main__':
         if not paused or step:
             ld.run_step(img, thrs1, thrs2, thrs4, thrs5, debug, angle_res)
             vd.run_step(img)
+            left_eps, right_eps = ld.eps
+            lp.endpoint_iterate(left_eps[:3], right_eps[:3], [((ld.left_x, img.shape[0], 0), (-1,0,0)), ((ld.right_x, img.shape[0], 0), (1,0,0))])
+
 
         vis = ld.draw_frame(debug, img.copy())
         vis = vd.draw_frame(debug, vis, vd1, vd2)
+        if lp != None:
+            lp.draw(vis, (0,255,0))
         step = False
         cv2.imshow('edge', vis)
         ch = cv2.waitKey(5)

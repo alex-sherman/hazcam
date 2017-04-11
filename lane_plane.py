@@ -15,7 +15,9 @@ def norm2(a, b):
 
 class LanePlane(object):
     epsilon = 0.00001
-    def __init__(self):
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
         self.mat = [
                     [1, 0, 0, 0],
                     [0, 1, 0, 0],
@@ -28,7 +30,7 @@ class LanePlane(object):
     def project(self, p, mat = None):
         mat = mat or self.mat
         x, y, z = self.projectRaw(p, mat)
-        return (WIDTH * (x + 1) / 2., HEIGHT * (1 - (y + 1) / 2.), z)
+        return (self.width * (x + 1) / 2., self.height * (1 - (y + 1) / 2.), z)
 
     def project2d(self, p):
         x, y, z = self.project(p, self.mat)
@@ -43,7 +45,7 @@ class LanePlane(object):
 
     def unproject(self, p):
         inv_mat = lin.inv(self.mat)
-        p3 = [p[0] * 2. / WIDTH - 1, (p[1] / HEIGHT - 1) * -2. - 1, p[2]]
+        p3 = [p[0] * 2. / self.width - 1, (p[1] / self.height - 1) * -2. - 1, p[2]]
         return self.projectRaw(p3, inv_mat)
 
     def get_plane_point(self, x, y):
@@ -56,7 +58,7 @@ class LanePlane(object):
         else:
             d = dot(n, a)
             z = (d - dot(n[:2], [x, y]) / n[2])
-        output = plane.unproject([x, y, z])
+        output = self.unproject([x, y, z])
         return (output[0], 0, output[2])
 
     def evaluate(self, mat, constraints):
@@ -97,14 +99,20 @@ class LanePlane(object):
         amount1 = 0.01 * (1 - max(0, min(1, (1 - self.error1 / 2000))))
         number1 = 20 * (1 - max(0, min(1, (1 - self.error1 / 2000))))
         self.error1 = self.approximate(constraints, n = int(number1), amount = amount1)
-        constraints += [plane.pair_constraint(ep[0][0], ep[1][0], 0) for ep in left_eps]
-        constraints += [plane.pair_constraint(ep[0][1], ep[1][1], 0) for ep in left_eps]
-        constraints += [plane.pair_constraint(ep[0][0], ep[1][0], 1) for ep in right_eps]
-        constraints += [plane.pair_constraint(ep[0][1], ep[1][1], 1) for ep in right_eps]
+        constraints += [self.pair_constraint(ep[0][0], ep[1][0], -1) for ep in left_eps if len(ep) > 0]
+        constraints += [self.pair_constraint(ep[0][1], ep[1][1], -1) for ep in left_eps if len(ep) > 0]
+        constraints += [self.pair_constraint(ep[0][0], ep[1][0], 1) for ep in right_eps if len(ep) > 0]
+        constraints += [self.pair_constraint(ep[0][1], ep[1][1], 1) for ep in right_eps if len(ep) > 0]
         self.error2 = self.evaluate(self.mat, constraints)
         amount2 = 0.01 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
         number2 = 200 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
         self.error2 = self.approximate(constraints, n = int(number2), amount = amount2)
+        print(self.error2)
+
+    def draw(self, vis, color = (100,100,100)):
+        zs = [z for z in range(0, 20)]
+        for z1, z2 in zip(zs[:-1], zs[1:]):
+            cv2.line(vis, tuple(map(int, self.project2d((-1,0,z1)))), tuple(map(int, self.project2d((1,0,z1)))), color, 1)
 
 
 def on_click(plane, event, x, y, flags, param):
@@ -126,13 +134,13 @@ if __name__ == '__main__':
     depth_pairs = [p for ep in eps for p in zip(ep[0], ep[1])[:2]]
     print(depth_pairs)
     # 3D coordinates corresponding to i0, i1, i2, i3
-    r0 = (0, 0, 5)
-    r1 = (0, 0, 0)
+    r0 = (-1, 0, 5)
+    r1 = (-1, 0, 0)
     r2 = (1, 0, 5)
     r3 = (1, 0, 0)
     constraints = [(i0, r0), (i1, r1), (i2, r2), (i3, r3)]
 
-    plane = LanePlane()
+    plane = LanePlane(WIDTH, HEIGHT)
     error1 = float('inf')
     error2 = float('inf')
     #plane.approximate(constraints, n = 5000)
@@ -146,10 +154,7 @@ if __name__ == '__main__':
                 cv2.line(vis, tuple(pair[0][1]), tuple(pair[1][1]), (255, 0, 0), 2)
                 cv2.circle(vis, tuple(pair[0][0]), 5, (255, 255, 0))
                 cv2.circle(vis, tuple(pair[0][1]), 5, (255, 0, 255))
-        zs = [z for z in range(0, 20)]
-        for z1, z2 in zip(zs[:-1], zs[1:]):
-            cv2.line(vis, tuple(map(int, plane.project2d((0,0,z1)))), tuple(map(int, plane.project2d((1,0,z1)))), (100, 100, 100), 1)
-
+        plane.draw(vis)
         cv2.imshow('herp', vis)
         cv2.setMouseCallback("herp", lambda *args: on_click(plane, *args))
         ch = cv2.waitKey(5)
