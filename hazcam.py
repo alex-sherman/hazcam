@@ -55,7 +55,7 @@ if __name__ == '__main__':
             if img == None: break
             img = img[IMAGE_START:IMAGE_START + IMAGE_HEIGHT, :]
             if lp == None:
-                lp = LanePlane(img.shape[0], img.shape[1])
+                lp = LanePlane(img.shape[1], img.shape[0])
         thrs1 = cv2.getTrackbarPos('thrs1', 'edge')
         thrs2 = cv2.getTrackbarPos('thrs2', 'edge')
         thrs4 = cv2.getTrackbarPos('thrs4', 'edge') * 2
@@ -68,20 +68,22 @@ if __name__ == '__main__':
 
         if not paused or step:
             ld.run_step(img, thrs1, thrs2, thrs4, thrs5, debug, angle_res)
-            vd.run_step(img)
+            #vd.run_step(img)
             left_eps, right_eps = ld.eps
-            lp.endpoint_iterate(left_eps, right_eps, [((ld.left_x, img.shape[0], 0), (-1,0,0)), ((ld.right_x, img.shape[0], 0), (1,0,0))])
+            lp.endpoint_iterate(ld.left_line, ld.right_line)
 
 
         vis = ld.draw_frame(debug, img.copy())
-        vis = vd.draw_frame(debug, vis, vd1, vd2)
+        #vis = vd.draw_frame(debug, vis, vd1, vd2)
         if lp != None:
             lp.draw(vis, (0,255,0))
         step = False
         cv2.imshow('edge', vis)
         ch = cv2.waitKey(1)
         if ch == 116:
-            lp.mat = deepcopy(IDENTITY)
+            #lp.mat = deepcopy(IDENTITY)
+            lp.endpoint_iterate(ld.left_line, ld.right_line)
+            print(ld.left_line, ld.right_line)
         if ch == 13:
             step = True
         if ch == 32:

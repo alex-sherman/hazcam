@@ -96,33 +96,25 @@ class LanePlane(object):
         past_p3d = (x3d, 0, p3d[2] + 1)
         return ((past_point[0], past_point[1], screen_point[2] + 2), past_p3d)
 
-    def endpoint_iterate(self, left_eps, right_eps, supports):
-        constraints = supports
-        self.error1 = self.evaluate(self.mat, constraints)
-        amount1 = .01 * (1 - max(0, min(1, (1 - self.error1 / 2000))))
-        number1 = 20 * (1 - max(0, min(1, (1 - self.error1 / 2000))))
-        #self.error1 = self.approximate(constraints, n = int(number1), amount = amount1)
-        self.error2 = self.approximate(constraints, n = 10, amount = 0.002)
-        constraints += [self.pair_constraint(ep[0][0], ep[1][0], -1) for ep in left_eps if len(ep) > 0]
-        constraints += [self.pair_constraint(ep[0][1], ep[1][1], -1) for ep in left_eps if len(ep) > 0]
-        constraints += [self.pair_constraint(ep[0][0], ep[1][0], 1) for ep in right_eps if len(ep) > 0]
-        constraints += [self.pair_constraint(ep[0][1], ep[1][1], 1) for ep in right_eps if len(ep) > 0]
-        self.error2 = self.evaluate(self.mat, constraints)
-        amount2 = .1 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
-        number2 = 200 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
-        #self.error2 = self.approximate(constraints, n = int(number2), amount = amount2)
-        self.error2 = self.approximate(constraints, n = 50, amount = 0.02)
-        print(self.error2)
+    def endpoint_iterate(self, left, right):
+        supports = [(tuple(left[0]) +  (0,), (-1,0,0)),
+                    (tuple(right[0]) +  (0,), (1,0,0)),
+                    (tuple(left[1]) +  (1,), (-1,0,1)),
+                    (tuple(right[1]) +  (1,), (1,0,1))]
+        self.error = self.approximate(supports, 0,0)
+        amount = .01 * (1 - max(0, min(1, (1 - self.error / 1000))))
+        number = 200 * (1 - max(0, min(1, (1 - self.error / 1000))))
+        self.error = self.approximate(supports, n = int(number), amount = amount)
 
     def draw(self, vis, color = (100,100,100)):
-        zs = [z * 4 for z in range(0, 20)]
+        zs = [z / 4. for z in range(0, 20)]
         for z1, z2 in zip(zs[:-1], zs[1:]):
             cv2.line(vis, tuple(map(int, self.project2d((-1,0,z1)))), tuple(map(int, self.project2d((1,0,z1)))), color, 1)
 
 
 def on_click(plane, event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONUP:
-        print(plane.get_plane_point(x, y))
+        print((x, y), plane.get_plane_point(x, y))
 
 if __name__ == '__main__':
 
@@ -130,13 +122,13 @@ if __name__ == '__main__':
     left = eps[0]
     right = eps[1]
     WIDTH = 720
-    HEIGHT = 1280
+    HEIGHT = 369
     # Known 2D coordinates of our rectangle
     i0 = left[0][1] + [5]
     i1 = left[0][0] + [0]
     i2 = right[0][1] + [5]
     i3 = right[0][0] + [0]
-    depth_pairs = [p for ep in eps for p in zip(ep[0], ep[1])[:2]]
+    depth_pairs = [p for ep in eps for p in zip(ep[0], ep[1])[:4]]
     print(depth_pairs)
     # 3D coordinates corresponding to i0, i1, i2, i3
     r0 = (-1, 0, 5)
@@ -150,7 +142,7 @@ if __name__ == '__main__':
     error2 = float('inf')
     #plane.approximate(constraints, n = 5000)
     while True:
-        plane.endpoint_iterate(eps[0:4:2], eps[1:4:2], [(i1, r1), (i3, r3)])
+        plane.endpoint_iterate([(359, 369), (503, 241)], [(921, 369), (753, 241)])
         vis = np.zeros((370, 1280, 3), np.uint8)
         for pair in eps:
             if len(pair) > 0:

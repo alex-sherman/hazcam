@@ -12,7 +12,10 @@ def length(a):
 
 def norm(a):
     l = length(a)
-    return [t / l for t in a]
+    return scale(a, 1.0 / l)
+
+def scale(a, s):
+    return [t * s for t in a]
 
 def cross(a, b):
     c = [a[1]*b[2] - a[2]*b[1],
