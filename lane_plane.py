@@ -29,6 +29,7 @@ class LanePlane(object):
         self.mat = deepcopy(IDENTITY)
         self.error1 = float('inf')
         self.error2 = float('inf')
+        self.screen_plane_points = []
 
     def project(self, p, mat = None):
         mat = mat or self.mat
@@ -54,15 +55,11 @@ class LanePlane(object):
         return self.projectRaw(p3, inv_mat)
 
     def get_plane_point(self, x, y):
-        a = self.project((0,0,0))
-        b = self.project((1,0,0))
-        c = self.project((1,0,1))
-        n = norm(cross(diff(a, b), diff(c, b)))
-        if n[2] == 0:
+        if self.n[2] == 0:
             z = 0
         else:
-            d = dot(n, a)
-            z = (d - dot(n[:2], [x, y]) / n[2])
+            d = dot(self.n, self.a)
+            z = (d - dot(self.n[:2], [x, y]) / self.n[2])
         output = self.unproject([x, y, z])
         return (output[0], 0, output[2])
 
@@ -90,11 +87,8 @@ class LanePlane(object):
                     est = est2
         return est
 
-    def pair_constraint(self, cur_point, past_point, x3d):
-        p3d = self.get_plane_point(*cur_point)
-        screen_point = self.project(p3d)
-        past_p3d = (x3d, 0, p3d[2] + 1)
-        return ((past_point[0], past_point[1], screen_point[2] + 2), past_p3d)
+    def pair_3d_delta(self, cur_point, past_point):
+        return diff(self.get_plane_point(*cur_point), self.get_plane_point(*past_point))
 
     def endpoint_iterate(self, left, right):
         supports = [(tuple(left[0]) +  (0,), (-1,0,0)),
@@ -105,6 +99,10 @@ class LanePlane(object):
         amount = .01 * (1 - max(0, min(1, (1 - self.error / 1000))))
         number = 200 * (1 - max(0, min(1, (1 - self.error / 1000))))
         self.error = self.approximate(supports, n = int(number), amount = amount)
+        self.a = self.project((0,0,0))
+        b = self.project((1,0,0))
+        c = self.project((1,0,1))
+        self.n = norm(cross(diff(self.a, b), diff(c, b)))
 
     def draw(self, vis, color = (100,100,100)):
         zs = [z / 4. for z in range(0, 20)]
