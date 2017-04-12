@@ -100,6 +100,7 @@ class LaneDetector(object):
         self.right_x = 0
         self.boxes = [[], []]
         self.edge = None
+        self.eps = [[], []]
 
     def update_edge_mask(self, previous_mask, previous_x, slope_sign, thrs1, thrs2, thrs4, thrs5, debug, angle_res):
         lines = cv2.HoughLinesP(self.edge, 1, np.pi / angle_res, thrs4, minLineLength = 10, maxLineGap = 200)
@@ -138,8 +139,7 @@ class LaneDetector(object):
         
         self.segment_history = self.boxes
         self.boxes = [find_lane_markers(self.masked_edges_left), find_lane_markers(self.masked_edges_right)]
-        self.eps = [combine_eps(cur, past) for cur, past in zip(self.boxes, self.segment_history)]
-        #self.eps = [[maximize([(a, b) for b in self.segment_history], lambda p: similar(p[0], p[1]), list) for a in self.boxes], []]
+        self.eps = [ep[-3:] + combine_eps(cur, past)[:1] for cur, past, ep in zip(self.boxes, self.segment_history, self.eps)]
 
     def draw_frame(self, debug, vis):
         #self.boxes = find_lane_markers(self.masked_edges_left)

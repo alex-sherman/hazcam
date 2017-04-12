@@ -13,7 +13,7 @@ import math
 
 from lane_detect import LaneDetector
 from vehicle_detection import VehicleDetector
-from lane_plane import LanePlane
+from lane_plane import *
 
 IMAGE_START = 200
 IMAGE_HEIGHT = 370
@@ -70,7 +70,7 @@ if __name__ == '__main__':
             ld.run_step(img, thrs1, thrs2, thrs4, thrs5, debug, angle_res)
             vd.run_step(img)
             left_eps, right_eps = ld.eps
-            lp.endpoint_iterate(left_eps[:3], right_eps[:3], [((ld.left_x, img.shape[0], 0), (-1,0,0)), ((ld.right_x, img.shape[0], 0), (1,0,0))])
+            lp.endpoint_iterate(left_eps, right_eps, [((ld.left_x, img.shape[0], 0), (-1,0,0)), ((ld.right_x, img.shape[0], 0), (1,0,0))])
 
 
         vis = ld.draw_frame(debug, img.copy())
@@ -79,7 +79,9 @@ if __name__ == '__main__':
             lp.draw(vis, (0,255,0))
         step = False
         cv2.imshow('edge', vis)
-        ch = cv2.waitKey(5)
+        ch = cv2.waitKey(1)
+        if ch == 116:
+            lp.mat = deepcopy(IDENTITY)
         if ch == 13:
             step = True
         if ch == 32:

@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import numpy.linalg as lin
 import time
+from copy import deepcopy
+from random import randrange, choice, uniform
 
 
 # The squared distance between two points a and b
@@ -13,17 +15,18 @@ def norm2(a, b):
     dz = b[2] - a[2]
     return (dx * dx + dy * dy + dz * dz * 100)
 
+IDENTITY = [
+    [1, 0, 0, 0],
+    [0, 1, 0, 0],
+    [0, 0, 1, 0],
+    [0, 0, 0, 1],
+]
 class LanePlane(object):
     epsilon = 0.00001
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.mat = [
-                    [1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1, 0],
-                    [0, 0, 0, 1],
-                ]
+        self.mat = deepcopy(IDENTITY)
         self.error1 = float('inf')
         self.error2 = float('inf')
 
@@ -37,10 +40,12 @@ class LanePlane(object):
         return (x, y)
 
     def projectRaw(self, p, mat):
-        x = mat[0][0] * p[0] + mat[0][1] * p[1] + mat[0][2] * p[2] + mat[0][3] * 1
-        y = mat[1][0] * p[0] + mat[1][1] * p[1] + mat[1][2] * p[2] + mat[1][3] * 1
-        z = mat[2][0] * p[0] + mat[2][1] * p[1] + mat[2][2] * p[2] + mat[2][3] * 1
-        w = mat[3][0] * p[0] + mat[3][1] * p[1] + mat[3][2] * p[2] + mat[3][3] * 1
+        p = tuple(p) + (1,)
+        x,y,z,w = np.matmul(mat, p)
+        #x = mat[0][0] * p[0] + mat[0][1] * p[1] + mat[0][2] * p[2] + mat[0][3] * 1
+        #y = mat[1][0] * p[0] + mat[1][1] * p[1] + mat[1][2] * p[2] + mat[1][3] * 1
+        #z = mat[2][0] * p[0] + mat[2][1] * p[1] + mat[2][2] * p[2] + mat[2][3] * 1
+        #w = mat[3][0] * p[0] + mat[3][1] * p[1] + mat[3][2] * p[2] + mat[3][3] * 1
         return (x / w, y / w, z / w)
 
     def unproject(self, p):
@@ -65,8 +70,6 @@ class LanePlane(object):
         return sum([norm2(c[0], self.project(c[1], mat)) for c in constraints])
 
     def perturb(self, constraints, amount, est):
-        from copy import deepcopy
-        from random import randrange, choice, uniform
         mat2 = deepcopy(self.mat)
         i, j = choice([(i, j) for i in [0, 1, 3] for j in [0, 2, 3]])
         mat2[i][j] += LanePlane.epsilon
@@ -91,7 +94,7 @@ class LanePlane(object):
         p3d = self.get_plane_point(*cur_point)
         screen_point = self.project(p3d)
         past_p3d = (x3d, 0, p3d[2] + 1)
-        return ((past_point[0], past_point[1], screen_point[2] + 1), past_p3d)
+        return ((past_point[0], past_point[1], screen_point[2] + 2), past_p3d)
 
     def endpoint_iterate(self, left_eps, right_eps, supports):
         constraints = supports
@@ -103,6 +106,10 @@ class LanePlane(object):
         constraints += [self.pair_constraint(ep[0][1], ep[1][1], -1) for ep in left_eps if len(ep) > 0]
         constraints += [self.pair_constraint(ep[0][0], ep[1][0], 1) for ep in right_eps if len(ep) > 0]
         constraints += [self.pair_constraint(ep[0][1], ep[1][1], 1) for ep in right_eps if len(ep) > 0]
+        #constraints += [self.pair_constraint(ep[0][0], ep[0][1], -1) for ep in left_eps if len(ep) > 0]
+        #constraints += [self.pair_constraint(ep[1][0], ep[1][1], -1) for ep in left_eps if len(ep) > 0]
+        #constraints += [self.pair_constraint(ep[0][0], ep[0][1], 1) for ep in right_eps if len(ep) > 0]
+        #constraints += [self.pair_constraint(ep[1][0], ep[1][1], 1) for ep in right_eps if len(ep) > 0]
         self.error2 = self.evaluate(self.mat, constraints)
         amount2 = 0.01 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
         number2 = 200 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
@@ -110,7 +117,7 @@ class LanePlane(object):
         print(self.error2)
 
     def draw(self, vis, color = (100,100,100)):
-        zs = [z for z in range(0, 20)]
+        zs = [z * 4 for z in range(0, 20)]
         for z1, z2 in zip(zs[:-1], zs[1:]):
             cv2.line(vis, tuple(map(int, self.project2d((-1,0,z1)))), tuple(map(int, self.project2d((1,0,z1)))), color, 1)
 
