@@ -99,21 +99,19 @@ class LanePlane(object):
     def endpoint_iterate(self, left_eps, right_eps, supports):
         constraints = supports
         self.error1 = self.evaluate(self.mat, constraints)
-        amount1 = 0.01 * (1 - max(0, min(1, (1 - self.error1 / 2000))))
+        amount1 = .01 * (1 - max(0, min(1, (1 - self.error1 / 2000))))
         number1 = 20 * (1 - max(0, min(1, (1 - self.error1 / 2000))))
-        self.error1 = self.approximate(constraints, n = int(number1), amount = amount1)
+        #self.error1 = self.approximate(constraints, n = int(number1), amount = amount1)
+        self.error2 = self.approximate(constraints, n = 10, amount = 0.002)
         constraints += [self.pair_constraint(ep[0][0], ep[1][0], -1) for ep in left_eps if len(ep) > 0]
         constraints += [self.pair_constraint(ep[0][1], ep[1][1], -1) for ep in left_eps if len(ep) > 0]
         constraints += [self.pair_constraint(ep[0][0], ep[1][0], 1) for ep in right_eps if len(ep) > 0]
         constraints += [self.pair_constraint(ep[0][1], ep[1][1], 1) for ep in right_eps if len(ep) > 0]
-        #constraints += [self.pair_constraint(ep[0][0], ep[0][1], -1) for ep in left_eps if len(ep) > 0]
-        #constraints += [self.pair_constraint(ep[1][0], ep[1][1], -1) for ep in left_eps if len(ep) > 0]
-        #constraints += [self.pair_constraint(ep[0][0], ep[0][1], 1) for ep in right_eps if len(ep) > 0]
-        #constraints += [self.pair_constraint(ep[1][0], ep[1][1], 1) for ep in right_eps if len(ep) > 0]
         self.error2 = self.evaluate(self.mat, constraints)
-        amount2 = 0.01 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
+        amount2 = .1 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
         number2 = 200 * (1 - max(0, min(1, (1 - self.error2 / 10000))))
-        self.error2 = self.approximate(constraints, n = int(number2), amount = amount2)
+        #self.error2 = self.approximate(constraints, n = int(number2), amount = amount2)
+        self.error2 = self.approximate(constraints, n = 50, amount = 0.02)
         print(self.error2)
 
     def draw(self, vis, color = (100,100,100)):

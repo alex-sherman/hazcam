@@ -139,7 +139,7 @@ class LaneDetector(object):
         
         self.segment_history = self.boxes
         self.boxes = [find_lane_markers(self.masked_edges_left), find_lane_markers(self.masked_edges_right)]
-        self.eps = [ep[-3:] + combine_eps(cur, past)[:1] for cur, past, ep in zip(self.boxes, self.segment_history, self.eps)]
+        self.eps = [ep[-2:] + combine_eps(cur, past)[:2] for cur, past, ep in zip(self.boxes, self.segment_history, self.eps)]
 
     def draw_frame(self, debug, vis):
         #self.boxes = find_lane_markers(self.masked_edges_left)
