@@ -74,7 +74,8 @@ if __name__ == '__main__':
             if len(ld.depth_pairs) > 0:
                 delta_depths = sorted(map(lambda p: p[2], filter(lambda d: abs(d[0]) < 0.01, [lp.pair_3d_delta(dp[0], dp[1]) for dp in ld.depth_pairs])))
                 if len(delta_depths) > 8:
-                    print(sum(delta_depths[len(delta_depths) / 2 - 1:len(delta_depths) / 2 + 2]) / 3.)
+                    pass
+                    #print(sum(delta_depths[len(delta_depths) / 2 - 1:len(delta_depths) / 2 + 2]) / 3.)
                 
 
 
