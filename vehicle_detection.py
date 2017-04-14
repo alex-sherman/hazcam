@@ -11,15 +11,23 @@ CASCADE_SRC = 'cascade.xml'
 def rectangleSimilarity(r1, r2):
     a1 = r1[2] * r1[3]
     a2 = r2[2] * r2[3]
-    dx = abs(r1[0] - r2[0])
-    dy = abs(r1[1] - r2[1])
-    w1 = r1[2]
-    h1 = r1[3]
-    area_ratio = float(min(a1, a2)) / max(a1,a2)
+    
+    left_max = max(r1[0], r2[0])
+    right_min = min(r1[0]+ r1[2], r2[0] + r2[2])
+    top_min = min(r1[1]+r1[3], r2[1]+r2[3])
+    bottom_max = max(r1[1], r2[1])
+    x_overlap = right_min - left_max
+    y_overlap = top_min - bottom_max
 
-    x_sim = float(dx) / w1
-    y_sim = float(dy) / h1
-    similarity = area_ratio-x_sim-y_sim
+
+    if x_overlap <= 0 or y_overlap <= 0:
+        return 0
+
+    area = x_overlap * y_overlap
+
+    similarity = area / ((a1+a2)/2.0)
+    #print("Overlap area:", area, "Total Area:", (a1+a2)/2.0, "Similarity: ", similarity)
+
     #print(area_ratio, x_sim, y_sim, similarity)
     return similarity
 
@@ -50,7 +58,7 @@ class VehicleDetector(object):
 
         for i,[r1, weight] in enumerate(self.prev_rects):
             match = max([(0,0)]+[(rectangleSimilarity(r1, r2), j) for j,r2 in enumerate(searchRects)])
-            if(match[0] > 0.7):
+            if(match[0] > 0.2):
                 if weight < MAX_WEIGHT:
                     weight += 1
                 avRect = rectAverage(searchRects[match[1]], r1, 0.7)
@@ -66,8 +74,8 @@ class VehicleDetector(object):
         #Add unmatched rects from this frame to latest with weight 1
         self.latest_rects += [[rect, 1] for rect in searchRects]
 
-        for (x,y,w,h) in cars:
-            cv2.rectangle(vis,(x,y),(x+w,y+h),(0,255,0),1) 
+        # for (x,y,w,h) in cars:
+        #     cv2.rectangle(vis,(x,y),(x+w,y+h),(0,255,0),1) 
 
         self.latest_filtered_rects = [r for r in self.latest_rects if r[1] > WEIGHT_THRESH]
 
