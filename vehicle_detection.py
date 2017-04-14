@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 
 EDGE_DILATION = 2
+MAX_WEIGHT = 7
+WEIGHT_THRESH = 4
 CASCADE_SRC = 'cascade.xml'
 
 def rectangleSimilarity(r1, r2):
@@ -29,13 +31,13 @@ class VehicleDetector(object):
     def __init__(self):
         self.img = None
         self.car_cascade = cv2.CascadeClassifier(CASCADE_SRC)
-        self.detection_history = []
-        self.prev_filtered_rects = []
+        self.prev_rects = []
+        self.latest_rects = []
         self.latest_filtered_rects = []
 
     def run_step(self, img):
         self.img = img
-        self.prev_filtered_rects = self.latest_filtered_rects
+        self.prev_rects = self.latest_rects
 
     
     def draw_frame(self, debug, vis, thrs1, thrs2):
@@ -44,32 +46,33 @@ class VehicleDetector(object):
         cars = self.car_cascade.detectMultiScale(gray, 1.2, thrs1)
 
         searchRects = list(cars)
-        self.latest_filtered_rects = []
+        self.latest_rects = []
 
-        for i,[r1, weight] in enumerate(self.prev_filtered_rects):
+        for i,[r1, weight] in enumerate(self.prev_rects):
             match = max([(0,0)]+[(rectangleSimilarity(r1, r2), j) for j,r2 in enumerate(searchRects)])
             if(match[0] > 0.7):
-                if weight < 5:
+                if weight < MAX_WEIGHT:
                     weight += 1
                 avRect = rectAverage(searchRects[match[1]], r1, 0.7)
-                self.latest_filtered_rects.append([avRect, weight])
+                self.latest_rects.append([avRect, weight])
                 #remove r2 from current frame search space
                 del searchRects[match[1]]
             else:
                 #if no match was found in the current frame, roll forward with weight-1
                 #otherwise do not roll forward
                 if weight > 1:
-                    self.latest_filtered_rects.append([r1, weight-1])
+                    self.latest_rects.append([r1, weight-1])
 
         #Add unmatched rects from this frame to latest with weight 1
-        self.latest_filtered_rects += [[rect, 1] for rect in searchRects]
+        self.latest_rects += [[rect, 1] for rect in searchRects]
 
         for (x,y,w,h) in cars:
             cv2.rectangle(vis,(x,y),(x+w,y+h),(0,255,0),1) 
 
+        self.latest_filtered_rects = [r for r in self.latest_rects if r[1] > WEIGHT_THRESH]
+
         for [(x,y,w,h), weight] in self.latest_filtered_rects:
-            print(weight)
-            if(weight > 3):
-                cv2.rectangle(vis,(x,y),(x+w,y+h),(0,0,255),2) 
+            #print(weight)
+            cv2.rectangle(vis,(x,y),(x+w,y+h),(0,0,255),2) 
         return vis
 
