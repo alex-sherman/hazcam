@@ -19,6 +19,13 @@ import json
 IMAGE_START = 200
 IMAGE_HEIGHT = 370
 
+def drawText(vis, text, position, scale, thickness, padding = 2):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    size = cv2.getTextSize(text, font, scale, thickness)[0]
+    size = (size[0] + padding * 2, -size[1] - padding * 2)
+    cv2.rectangle(vis, tuple(diff(position, (padding, -padding * 2))), tuple(add(position, size)), (0,0,0), thickness = -1)
+    cv2.putText(vis, text, position, font, scale, (255, 255, 0), thickness, bottomLeftOrigin = False)
+
 if __name__ == '__main__':
     print(__doc__)
 
@@ -40,13 +47,14 @@ if __name__ == '__main__':
     cv2.createTrackbar('vd2', 'edge', 4525, 10000, nothing)
 
     cap = cv2.VideoCapture(fn)
+    fps = cap.get(cv2.CAP_PROP_FPS)
     ld = LaneDetector()
     vd = VehicleDetector()
     lp = None
 
     paused = True
     step = True
-
+    cur_speed = 0
     while True:
         if not paused or step:
             flag, img = cap.read()
@@ -70,14 +78,23 @@ if __name__ == '__main__':
             vd.run_step(img)
             lp.endpoint_iterate(ld.left_line, ld.right_line)
             if len(ld.depth_pairs) > 0:
-                delta_depths = sorted(map(lambda p: p[2], filter(lambda d: abs(d[0]) < 0.01 and d[2] < -0.001, [lp.pair_3d_delta(dp[0], dp[1]) for dp in ld.depth_pairs])))
+                delta_depths = sorted(map(lambda p: p[2], filter(lambda d: abs(d[0]) < 0.01 and d[2] > 0.001, [lp.pair_3d_delta(dp[1], dp[0]) for dp in ld.depth_pairs])))
                 if len(delta_depths) > 4:
-                    print(sum(delta_depths[len(delta_depths) / 2 - 1:len(delta_depths) / 2 + 2]) / 3.)
-                
-
+                    est_speed = sum(delta_depths[len(delta_depths) / 2 - 1:len(delta_depths) / 2 + 2]) / 3.
+                    ratio = abs(cur_speed - est_speed) / cur_speed if cur_speed != 0 else 0
+                    if ratio > 0.9 and ratio < 1.1:
+                        cur_speed = est_speed
+                    else:
+                        cur_speed = cur_speed * 0.5 + est_speed * 0.5
 
         vis = ld.draw_frame(debug, img.copy())
         vis = vd.draw_frame(debug, vis, vd1, vd2)
+        drawText(vis,str(cur_speed), (10, 20), 0.5, 1)
+        for rect in vd.latest_filtered_rects:
+            bottom_left = (rect[0][0], rect[0][1] + rect[0][3])
+            bottom_right = (rect[0][0] + rect[0][2], rect[0][1] + rect[0][3])
+            depth = min(lp.get_plane_point(*bottom_left), lp.get_plane_point(*bottom_right))[2]
+            drawText(vis, "{:2.2f}s".format(depth / cur_speed / fps), tuple(rect[0][:2]), 0.5, 1)
         if lp != None:
             lp.draw(vis, (0,255,0))
         step = False
