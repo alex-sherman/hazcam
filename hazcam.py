@@ -19,12 +19,12 @@ import json
 IMAGE_START = 200
 IMAGE_HEIGHT = 370
 
-def drawText(vis, text, position, scale, thickness, padding = 2):
+def drawText(vis, text, position, scale, thickness, padding = 2, color = (255, 255, 0)):
     font = cv2.FONT_HERSHEY_SIMPLEX
     size = cv2.getTextSize(text, font, scale, thickness)[0]
     size = (size[0] + padding * 2, -size[1] - padding * 2)
     cv2.rectangle(vis, tuple(diff(position, (padding, -padding * 2))), tuple(add(position, size)), (0,0,0), thickness = -1)
-    cv2.putText(vis, text, position, font, scale, (255, 255, 0), thickness, bottomLeftOrigin = False)
+    cv2.putText(vis, text, position, font, scale, color, thickness, bottomLeftOrigin = False)
 
 if __name__ == '__main__':
     print(__doc__)
@@ -90,11 +90,19 @@ if __name__ == '__main__':
         vis = ld.draw_frame(debug, img.copy())
         vis = vd.draw_frame(debug, vis, vd1, vd2)
         drawText(vis,str(cur_speed), (10, 20), 0.5, 1)
+        warning = False
         for rect in vd.latest_filtered_rects:
-            bottom_left = (rect[0][0], rect[0][1] + rect[0][3])
-            bottom_right = (rect[0][0] + rect[0][2], rect[0][1] + rect[0][3])
-            depth = min(lp.get_plane_point(*bottom_left), lp.get_plane_point(*bottom_right))[2]
-            drawText(vis, "{:2.2f}s".format(depth / cur_speed / fps), tuple(rect[0][:2]), 0.5, 1)
+            bottom_middle = (rect[0][0] + rect[0][2] / 2, rect[0][1] + rect[0][3])
+            p3d = lp.get_plane_point(*bottom_middle)
+            same_lane = p3d[0] > -1 and p3d[0] < 1
+            depth = p3d[2]
+            time = depth / cur_speed / fps
+            if time < 0.5 and same_lane:
+                drawText(vis, "{:2.2f}s".format(time), tuple(rect[0][:2]), 0.5, 1, color = (0,0,255))
+            elif time < 0.9 and same_lane or time < 0.2:
+                drawText(vis, "{:2.2f}s".format(time), tuple(rect[0][:2]), 0.5, 1, color = (0, 255, 255))
+            else:
+                drawText(vis, "{:2.2f}s".format(time), tuple(rect[0][:2]), 0.5, 1)
         if lp != None:
             lp.draw(vis, (0,255,0))
         step = False
