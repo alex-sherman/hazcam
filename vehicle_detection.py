@@ -21,6 +21,10 @@ def rectangleSimilarity(r1, r2):
     #print(area_ratio, x_sim, y_sim, similarity)
     return similarity
 
+def rectAverage(r_new, r_old, alpha):
+    av = tuple(map(lambda x: int(x[0] * alpha + x[1] * (1-alpha)), zip(r_new, r_old)))
+    return av
+
 class VehicleDetector(object):
     def __init__(self):
         self.img = None
@@ -47,7 +51,8 @@ class VehicleDetector(object):
             if(match[0] > 0.7):
                 if weight < 5:
                     weight += 1
-                self.latest_filtered_rects.append([searchRects[match[1]], weight])
+                avRect = rectAverage(searchRects[match[1]], r1, 0.7)
+                self.latest_filtered_rects.append([avRect, weight])
                 #remove r2 from current frame search space
                 del searchRects[match[1]]
             else:
