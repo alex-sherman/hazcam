@@ -167,8 +167,8 @@ class LaneDetector(object):
             vis[self.edge != 0] = (255, 255, 255)
         cv2.line(vis, tuple(map(int, self.left_line[0])), tuple(map(int, self.left_line[1])), (0, 0, 255), MASK_WIDTH)
         cv2.line(vis, tuple(map(int, self.right_line[0])), tuple(map(int, self.right_line[1])), (0, 0, 255), MASK_WIDTH)
-        #draw_lane_markers(self.eps[0], vis)
-        #draw_lane_markers(self.eps[1], vis)
+        draw_lane_markers(self.eps[0], vis)
+        draw_lane_markers(self.eps[1], vis)
         for dp in self.depth_pairs:
             cv2.line(vis, tuple(map(int, dp[0])), tuple(map(int, dp[1])), (0, 255, 0), 1)
         return vis
