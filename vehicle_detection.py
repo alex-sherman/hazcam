@@ -48,7 +48,7 @@ class VehicleDetector(object):
         self.prev_rects = self.latest_rects
 
     
-    def draw_frame(self, debug, vis, thrs1, thrs2):
+    def draw_frame(self, debug, vis, thrs1 = 5):
         height, width, c = vis.shape
         gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
         cars = self.car_cascade.detectMultiScale(gray, 1.2, thrs1)

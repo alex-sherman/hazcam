@@ -30,6 +30,7 @@ class LanePlane(object):
         self.error1 = float('inf')
         self.error2 = float('inf')
         self.screen_plane_points = []
+        self.n = [0,1,0]
 
     def project(self, p, mat = None):
         mat = mat or self.mat

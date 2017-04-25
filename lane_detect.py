@@ -106,8 +106,8 @@ class LaneDetector(object):
         self.edge = None
         self.eps = [[], []]
 
-    def update_edge_mask(self, previous_mask, previous_line, slope_sign, thrs1, thrs2, thrs4, thrs5, debug):
-        lines = cv2.HoughLinesP(self.edge, 1, np.pi / 180, thrs4, minLineLength = 10, maxLineGap = 200)
+    def update_edge_mask(self, previous_mask, previous_line, slope_sign, thrs1, thrs2, debug):
+        lines = cv2.HoughLinesP(self.edge, 1, np.pi / 180, 70, minLineLength = 10, maxLineGap = 200)
         lines = filter_lines(lines, VANISHING_HEIGHT, self.edge.shape[0], slope_sign)
         mask = np.zeros(self.edge.shape, np.uint8)
         for line in lines:
@@ -118,18 +118,18 @@ class LaneDetector(object):
         previous_mask = mask.copy()
         _, mask = cv2.threshold(mask, 40, 255, cv2.THRESH_BINARY)
         masked_edges = cv2.morphologyEx(cv2.bitwise_and(self.edge, self.edge, mask = mask), cv2.MORPH_CLOSE, np.array([[1] * EDGE_DILATION] *EDGE_DILATION))
-        lines2 = cv2.HoughLinesP(masked_edges, 1, np.pi / 180, thrs5, minLineLength = 10, maxLineGap = 200)
+        lines2 = cv2.HoughLinesP(masked_edges, 1, np.pi / 180, 70, minLineLength = 10, maxLineGap = 200)
         lines2 = filter_lines(lines2, VANISHING_HEIGHT, self.edge.shape[0], slope_sign)
         for line in lines2:
             x1,y1,x2,y2 = line
             cv2.line(mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
             previous_line[0] = add(previous_line[0], (x2,y2))
-            previous_line[1] = add(previous_line[1], (x_at_y(self.edge.shape[0]/2, x1, y1, x2, y2), self.edge.shape[0]/2))
+            previous_line[1] = add(previous_line[1], (x_at_y(self.edge.shape[0]*0.6, x1, y1, x2, y2), self.edge.shape[0]*0.6))
         previous_line[0] = scale(previous_line[0], 1.0 / (len(lines2) + 1))
         previous_line[1] = scale(previous_line[1], 1.0 / (len(lines2) + 1))
         return masked_edges, mask, previous_mask, previous_line
 
-    def run_step(self, img, thrs1, thrs2, thrs4, thrs5, debug):
+    def run_step(self, img, thrs1, thrs2, debug):
         height, width, c = img.shape
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -139,9 +139,9 @@ class LaneDetector(object):
             self.previous_mask_right = np.zeros((height, width, 1), np.uint8)
         self.edge = cv2.Canny(gray, thrs1, thrs2, apertureSize=5)
         self.masked_edges_left, self.current_mask_left, self.previous_mask_left, self.left_line \
-            = self.update_edge_mask(self.previous_mask_left, self.left_line, -1, thrs1, thrs2, thrs4, thrs5, debug)
+            = self.update_edge_mask(self.previous_mask_left, self.left_line, -1, thrs1, thrs2, debug)
         self.masked_edges_right, self.current_mask_right, self.previous_mask_right, self.right_line \
-            = self.update_edge_mask(self.previous_mask_right, self.right_line, 1, thrs1, thrs2, thrs4, thrs5, debug)
+            = self.update_edge_mask(self.previous_mask_right, self.right_line, 1, thrs1, thrs2, debug)
         
         self.segment_history = self.boxes
         self.boxes = [find_lane_markers(self.masked_edges_left), find_lane_markers(self.masked_edges_right)]
@@ -165,8 +165,8 @@ class LaneDetector(object):
             vis[self.masked_edges_left | self.masked_edges_right != 0] = (255, 0, 0)
         if debug & 0x1:
             vis[self.edge != 0] = (255, 255, 255)
-        cv2.line(vis, tuple(map(int, self.left_line[0])), tuple(map(int, self.left_line[1])), (0, 0, 255), MASK_WIDTH)
-        cv2.line(vis, tuple(map(int, self.right_line[0])), tuple(map(int, self.right_line[1])), (0, 0, 255), MASK_WIDTH)
+        cv2.line(vis, tuple(map(int, self.left_line[0])), tuple(map(int, self.left_line[1])), (0, 0, 255), 2)
+        cv2.line(vis, tuple(map(int, self.right_line[0])), tuple(map(int, self.right_line[1])), (0, 0, 255), 2)
         draw_lane_markers(self.eps[0], vis)
         draw_lane_markers(self.eps[1], vis)
         for dp in self.depth_pairs:

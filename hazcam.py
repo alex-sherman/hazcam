@@ -40,11 +40,7 @@ if __name__ == '__main__':
     cv2.namedWindow('edge')
     cv2.createTrackbar('thrs1', 'edge', 4000, 10000, nothing)
     cv2.createTrackbar('thrs2', 'edge', 4000, 10000, nothing)
-    cv2.createTrackbar('thrs4', 'edge', 35, 50, nothing)
-    cv2.createTrackbar('thrs5', 'edge', 35, 100, nothing)
     cv2.createTrackbar('debug', 'edge', 0, 31, nothing)
-    cv2.createTrackbar('vd1', 'edge', 5, 10, nothing)
-    cv2.createTrackbar('vd2', 'edge', 4525, 10000, nothing)
 
     cap = cv2.VideoCapture(fn)
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -66,29 +62,25 @@ if __name__ == '__main__':
                     lp.mat = json.load(f)
         thrs1 = cv2.getTrackbarPos('thrs1', 'edge')
         thrs2 = cv2.getTrackbarPos('thrs2', 'edge')
-        thrs4 = cv2.getTrackbarPos('thrs4', 'edge') * 2
-        thrs5 = cv2.getTrackbarPos('thrs5', 'edge') * 2
         debug = cv2.getTrackbarPos('debug', 'edge')
 
-        vd1 = cv2.getTrackbarPos('vd1', 'edge')
-        vd2 = cv2.getTrackbarPos('vd2', 'edge')
-
         if not paused or step:
-            ld.run_step(img, thrs1, thrs2, thrs4, thrs5, debug)
+            ld.run_step(img, thrs1, thrs2, debug)
             vd.run_step(img)
-            lp.endpoint_iterate(ld.left_line, ld.right_line)
-            if len(ld.depth_pairs) > 0:
-                delta_depths = sorted(map(lambda p: p[2], filter(lambda d: abs(d[0]) < 0.01 and d[2] > 0.001, [lp.pair_3d_delta(dp[1], dp[0]) for dp in ld.depth_pairs])))
-                if len(delta_depths) > 4:
-                    est_speed = sum(delta_depths[len(delta_depths) / 2 - 1:len(delta_depths) / 2 + 2]) / 3.
-                    ratio = abs(cur_speed - est_speed) / cur_speed if cur_speed != 0 else 0
-                    if ratio > 0.9 and ratio < 1.1:
-                        cur_speed = est_speed
-                    else:
-                        cur_speed = cur_speed * 0.5 + est_speed * 0.5
+            if ld.left_line != [[0,0], [0,0]] and ld.right_line != [[0,0], [0,0]]:
+                lp.endpoint_iterate(ld.left_line, ld.right_line)
+                if len(ld.depth_pairs) > 0:
+                    delta_depths = sorted(map(lambda p: p[2], filter(lambda d: abs(d[0]) < 0.01 and d[2] > 0.001, [lp.pair_3d_delta(dp[1], dp[0]) for dp in ld.depth_pairs])))
+                    if len(delta_depths) > 4:
+                        est_speed = sum(delta_depths[len(delta_depths) / 2 - 1:len(delta_depths) / 2 + 2]) / 3.
+                        ratio = abs(cur_speed - est_speed) / cur_speed if cur_speed != 0 else 0
+                        if ratio > 0.9 and ratio < 1.1:
+                            cur_speed = est_speed
+                        else:
+                            cur_speed = cur_speed * 0.5 + est_speed * 0.5
 
         vis = ld.draw_frame(debug, img.copy())
-        vis = vd.draw_frame(debug, vis, vd1, vd2)
+        vis = vd.draw_frame(debug, vis)
         drawText(vis,str(cur_speed), (10, 20), 0.5, 1)
         warning = False
         for rect in vd.latest_filtered_rects:
