@@ -105,7 +105,7 @@ class LanePlane(object):
         c = self.project((1,0,1))
         self.n = norm(cross(diff(self.a, b), diff(c, b)))
 
-    def draw(self, vis, color = (100,100,100)):
+    def draw(self, vis, color = (0,255,0)):
         zs = [z / 4. for z in range(0, 20)]
         for z1, z2 in zip(zs[:-1], zs[1:]):
             cv2.line(vis, tuple(map(int, self.project2d((-1,0,z1)))), tuple(map(int, self.project2d((1,0,z1)))), color, 1)
@@ -137,19 +137,16 @@ if __name__ == '__main__':
     constraints = [(i0, r0), (i1, r1), (i2, r2), (i3, r3)]
 
     plane = LanePlane(WIDTH, HEIGHT)
+    left = [(359, 369), (503, 241)]
+    right = [(921, 369), (753, 241)]
     error1 = float('inf')
     error2 = float('inf')
     #plane.approximate(constraints, n = 5000)
     while True:
         plane.endpoint_iterate([(359, 369), (503, 241)], [(921, 369), (753, 241)])
         vis = np.zeros((370, 1280, 3), np.uint8)
-        for pair in eps:
-            if len(pair) > 0:
-                cv2.line(vis, tuple(pair[0][1]), tuple(add(pair[0][2], pair[0][1])), (255, 0, 255), 1)
-                cv2.line(vis, tuple(pair[0][0]), tuple(pair[1][0]), (255, 0, 0), 2)
-                cv2.line(vis, tuple(pair[0][1]), tuple(pair[1][1]), (255, 0, 0), 2)
-                cv2.circle(vis, tuple(pair[0][0]), 5, (255, 255, 0))
-                cv2.circle(vis, tuple(pair[0][1]), 5, (255, 0, 255))
+        cv2.line(vis, left[0], left[1], (255, 0, 255), 3)
+        cv2.line(vis, right[0], right[1], (255, 0, 255), 3)
         plane.draw(vis)
         cv2.imshow('herp', vis)
         cv2.setMouseCallback("herp", lambda *args: on_click(plane, *args))

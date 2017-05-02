@@ -14,7 +14,6 @@ from vector_math import *
 EDGE_DILATION = 20
 MIN_LINE_SLOPE = 0.5
 MAX_LINE_SLOPE = 5
-VANISHING_HEIGHT = 130
 
 MASK_WEIGHT = 0.1
 MASK_THRESH = 40
@@ -94,7 +93,8 @@ def combine_eps(cur, past):
     return [maximize([(a, b) for b in past], lambda p: similar(p[0], p[1]), list) for a in cur]
 
 class LaneDetector(object):
-    def __init__(self):
+    def __init__(self, vanishing_height = 130):
+        self.vanishing_height = vanishing_height
         self.segment_history = []
         self.masked_edges_right = None
         self.masked_edges_left = None
@@ -105,10 +105,13 @@ class LaneDetector(object):
         self.boxes = [[], []]
         self.edge = None
         self.eps = [[], []]
+        self.lines = []
+        self.lines2 = []
 
     def update_edge_mask(self, previous_mask, previous_line, slope_sign, thrs1, thrs2, debug):
         lines = cv2.HoughLinesP(self.edge, 1, np.pi / 180, 70, minLineLength = 10, maxLineGap = 200)
-        lines = filter_lines(lines, VANISHING_HEIGHT, self.edge.shape[0], slope_sign)
+        lines = filter_lines(lines, self.vanishing_height, self.edge.shape[0], slope_sign)
+        self.lines.extend(lines)
         mask = np.zeros(self.edge.shape, np.uint8)
         for line in lines:
             x1,y1,x2,y2 = line
@@ -119,7 +122,8 @@ class LaneDetector(object):
         _, mask = cv2.threshold(mask, 40, 255, cv2.THRESH_BINARY)
         masked_edges = cv2.morphologyEx(cv2.bitwise_and(self.edge, self.edge, mask = mask), cv2.MORPH_CLOSE, np.array([[1] * EDGE_DILATION] *EDGE_DILATION))
         lines2 = cv2.HoughLinesP(masked_edges, 1, np.pi / 180, 70, minLineLength = 10, maxLineGap = 200)
-        lines2 = filter_lines(lines2, VANISHING_HEIGHT, self.edge.shape[0], slope_sign)
+        lines2 = filter_lines(lines2, self.vanishing_height, self.edge.shape[0], slope_sign)
+        self.lines2.extend(lines2)
         for line in lines2:
             x1,y1,x2,y2 = line
             cv2.line(mask, (x1,y1),(x2,y2), 255, MASK_WIDTH)
@@ -130,6 +134,8 @@ class LaneDetector(object):
         return masked_edges, mask, previous_mask, previous_line
 
     def run_step(self, img, thrs1, thrs2, debug):
+        self.lines = []
+        self.lines2 = []
         height, width, c = img.shape
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
@@ -151,20 +157,22 @@ class LaneDetector(object):
     def draw_frame(self, debug, vis):
         #self.boxes = find_lane_markers(self.masked_edges_left)
         vis = np.uint8(vis)
-        if debug & 0x10:
+        if debug & 0x4:
             vis[self.current_mask_left | self.current_mask_right != 0] = (0, 50, 0)
-        #if debug & 0x8:
-        #    for line in self.lines:
-        #        x1,y1,x2,y2 = line
-        #        cv2.line(vis, (x1,y1),(x2,y2), (0, 0, 255), MASK_WIDTH)
-        #if debug & 0x4:
-        #    for line in self.lines2:
-        #        x1,y1,x2,y2 = line
-        #        cv2.line(vis, (x1,y1),(x2,y2), (0, 255, 255), 1)
         if debug & 0x2:
+            for line in self.lines:
+                x1,y1,x2,y2 = line
+                cv2.line(vis, (x1,y1),(x2,y2), (0, 0, 255), MASK_WIDTH)
+        if debug & 0x8:
+            for line in self.lines2:
+                x1,y1,x2,y2 = line
+                cv2.line(vis, (x1,y1),(x2,y2), (0, 255, 255), 1)
+        if debug & 0x10:
             vis[self.masked_edges_left | self.masked_edges_right != 0] = (255, 0, 0)
         if debug & 0x1:
-            vis[self.edge != 0] = (255, 255, 255)
+            vis[self.edge != 0] = (0, 255, 0)
+        return vis
+    def draw_overlay(self, vis):
         cv2.line(vis, tuple(map(int, self.left_line[0])), tuple(map(int, self.left_line[1])), (0, 0, 255), 2)
         cv2.line(vis, tuple(map(int, self.right_line[0])), tuple(map(int, self.right_line[1])), (0, 0, 255), 2)
         draw_lane_markers(self.eps[0], vis)
