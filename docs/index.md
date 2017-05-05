@@ -55,7 +55,13 @@ The Suzuki85 contour detection algorith is used to bound each line marker which 
 <div style='position:relative;padding-bottom:57%'><iframe src='https://gfycat.com/ifr/ImpressionableQuickAmericanbobtail' frameborder='0' scrolling='no' width='100%' height='100%' style='position:absolute;top:0;left:0;' allowfullscreen></iframe></div><br>
 
 #### Lane Plane Calculation
-
+In order to estimate following time, Hazcam requires infers some information about the 3D scene from 2D images.
+Knowing that the lane lines lie on a lane plane, we can try to reconstruct a 3D projection matrix from a 3D world space
+defined four points located on the lane plane. We choose to use the bottom endpoints of the lane lines as well as two
+points in the middle of the screen that lie on each lane line. We assign a depth of zero to the nearest points, and a depth
+of one to the middle points. From here we use a gradient descent algorithm to search for a 3D projection matrix that
+minimizes the error of the projected positions of these four points. Now, using the inverse of this projection matrix, we can
+find the world space depth of any point that lies on the lane plane.
 <div style='position:relative;padding-bottom:57%'><iframe src='https://gfycat.com/ifr/GeneralPaltryAdamsstaghornedbeetle' frameborder='0' scrolling='no' width='100%' height='100%' style='position:absolute;top:0;left:0;' allowfullscreen></iframe></div><br>
 
 #### Haar Detection
